@@ -171,6 +171,21 @@ body {
   border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
+#stats-toggle {
+  display: none;
+}
+
+/* Geolocation marker */
+.location-pulse {
+  animation: loc-pulse 2s ease-out infinite;
+}
+
+@keyframes loc-pulse {
+  0% { stroke-opacity: 1; }
+  50% { stroke-opacity: 0.4; }
+  100% { stroke-opacity: 1; }
+}
+
 .stat-row {
   display: flex;
   gap: 16px;
@@ -648,10 +663,39 @@ body {
 @media (max-width: 640px) {
   #app-header { padding: 0 10px; height: 46px; }
   .header-left h1 { font-size: 14px; }
-  #track-select { max-width: 160px; font-size: 12px; }
-  .file-btn { padding: 5px 8px; font-size: 12px; }
-  .file-btn svg { display: none; }
-  #stats-overlay { top: 6px; right: 6px; padding: 8px 10px; min-width: 200px; }
+  #track-select { max-width: 120px; font-size: 12px; }
+  .header-btn, .file-btn { padding: 5px 8px; font-size: 12px; }
+  .header-btn svg, .file-btn svg { display: none; }
+  #stats-overlay { top: 6px; right: 6px; padding: 0; min-width: 200px; }
+  #stats-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  #stats-toggle-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  #stats-toggle svg {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+  }
+  #stats-overlay.collapsed #stats-toggle svg {
+    transform: rotate(180deg);
+  }
+  #stats-body {
+    padding: 0 10px 8px;
+  }
+  #stats-overlay.collapsed #stats-body {
+    display: none;
+  }
   .stat-value { font-size: 12px; }
   .stat-label { font-size: 9px; }
   .stat-row { gap: 10px; }

@@ -211,6 +211,48 @@ class MapManager {
     this.hoverMarker = null;
     this.waypointMarkers = [];
     this.photoMarkers = [];
+    this._locationMarker = null;
+    this._locationCircle = null;
+    this._watchId = null;
+  }
+
+  startGeolocation() {
+    if (!navigator.geolocation) return;
+    if (this._watchId !== null) return;
+
+    this._watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const accuracy = pos.coords.accuracy;
+
+        if (!this._locationMarker) {
+          this._locationMarker = L.circleMarker([lat, lon], {
+            radius: 7,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 1,
+            weight: 3,
+            className: 'location-pulse',
+          }).addTo(this.map);
+
+          this._locationCircle = L.circle([lat, lon], {
+            radius: accuracy,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.08,
+            weight: 1,
+            interactive: false,
+          }).addTo(this.map);
+        } else {
+          this._locationMarker.setLatLng([lat, lon]);
+          this._locationCircle.setLatLng([lat, lon]);
+          this._locationCircle.setRadius(accuracy);
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+    );
   }
 
   clear() {
@@ -754,6 +796,7 @@ class App {
     this._initDragDrop();
     this._loadManifest();
     this._loadPhotos();
+    this.mapManager.startGeolocation();
   }
 
   _initUI() {
@@ -761,6 +804,10 @@ class App {
     this.fileInput = document.getElementById('file-input');
     this.statsOverlay = document.getElementById('stats-overlay');
     this.loadingOverlay = document.getElementById('loading-overlay');
+
+    document.getElementById('stats-toggle').addEventListener('click', () => {
+      this.statsOverlay.classList.toggle('collapsed');
+    });
 
     this.trackSelect.addEventListener('change', () => {
       const val = this.trackSelect.value;
