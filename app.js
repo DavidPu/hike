@@ -829,7 +829,7 @@ class App {
     this.currentStats = null;
     this.parsedTracks = [];
     this.photos = [];
-    this.photosVisible = true;
+    this.photosVisible = false;
     this.pois = [];
     this.poiMode = false;
     this._poiIdCounter = 0;
@@ -1305,9 +1305,6 @@ class App {
       const resp = await fetch('pics-manifest.json?t=' + Date.now());
       if (!resp.ok) return;
       this.photos = await resp.json();
-      if (this.photos.length > 0) {
-        this.mapManager.loadPhotos(this.photos, (idx) => this._showPhoto(idx));
-      }
     } catch {
       // No photos — that's fine
     }
