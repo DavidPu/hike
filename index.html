@@ -45,6 +45,29 @@
   <main id="app-main">
     <div id="map-container">
       <div id="map"></div>
+      <div id="rec-fab" title="Record GPX trace">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+      </div>
+      <div id="rec-panel" class="hidden">
+        <div class="rec-header">
+          <span>Record Trace</span>
+          <button id="rec-panel-close" title="Collapse">&times;</button>
+        </div>
+        <div class="rec-body">
+          <div class="rec-stats">
+            <div class="rec-stat"><span class="rec-stat-value" id="rec-distance">0.00 mi</span><span class="rec-stat-label">Distance</span></div>
+            <div class="rec-stat"><span class="rec-stat-value" id="rec-duration">0:00</span><span class="rec-stat-label">Duration</span></div>
+            <div class="rec-stat"><span class="rec-stat-value" id="rec-points">0</span><span class="rec-stat-label">Points</span></div>
+          </div>
+          <div class="rec-actions">
+            <button id="rec-start" class="rec-btn rec-btn-start">Start</button>
+            <button id="rec-pause" class="rec-btn rec-btn-pause hidden">Pause</button>
+            <button id="rec-resume" class="rec-btn rec-btn-resume hidden">Resume</button>
+            <button id="rec-stop" class="rec-btn rec-btn-stop hidden" disabled>Stop</button>
+          </div>
+          <button id="rec-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
+        </div>
+      </div>
       <div id="stats-overlay" class="hidden">
         <div id="stats-toggle">
           <span id="stats-toggle-label">Stats</span>
@@ -75,31 +98,6 @@
       <div id="chart-tooltip" class="hidden"></div>
     </div>
   </main>
-
-  <div id="rec-fab" title="Record GPX trace">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
-  </div>
-
-  <div id="rec-panel" class="hidden">
-    <div class="rec-header">
-      <span>Record Trace</span>
-      <button id="rec-panel-close" title="Collapse">&times;</button>
-    </div>
-    <div class="rec-body">
-      <div class="rec-stats">
-        <div class="rec-stat"><span class="rec-stat-value" id="rec-distance">0.00 mi</span><span class="rec-stat-label">Distance</span></div>
-        <div class="rec-stat"><span class="rec-stat-value" id="rec-duration">0:00</span><span class="rec-stat-label">Duration</span></div>
-        <div class="rec-stat"><span class="rec-stat-value" id="rec-points">0</span><span class="rec-stat-label">Points</span></div>
-      </div>
-      <div class="rec-actions">
-        <button id="rec-start" class="rec-btn rec-btn-start">Start</button>
-        <button id="rec-pause" class="rec-btn rec-btn-pause hidden">Pause</button>
-        <button id="rec-resume" class="rec-btn rec-btn-resume hidden">Resume</button>
-        <button id="rec-stop" class="rec-btn rec-btn-stop hidden" disabled>Stop</button>
-      </div>
-      <button id="rec-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
-    </div>
-  </div>
 
   <div id="poi-panel" class="hidden">
     <div class="poi-panel-header">

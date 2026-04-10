@@ -615,10 +615,10 @@ body {
 /* ─── Recording FAB & Panel ─── */
 
 #rec-fab {
-  position: fixed;
-  bottom: 200px;
-  right: 14px;
-  z-index: 1100;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 900;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -654,10 +654,10 @@ body {
 }
 
 #rec-panel {
-  position: fixed;
-  bottom: 200px;
-  right: 14px;
-  z-index: 1100;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 900;
   width: 220px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
@@ -780,8 +780,8 @@ body {
 .rec-btn-download:hover { background: #0f766e; }
 
 @media (max-width: 640px) {
-  #rec-fab { bottom: 156px; right: 8px; width: 40px; height: 40px; }
-  #rec-panel { bottom: 156px; right: 8px; width: 200px; }
+  #rec-fab { bottom: 10px; right: 8px; width: 40px; height: 40px; }
+  #rec-panel { bottom: 10px; right: 8px; width: 200px; }
 }
 
 /* Drop overlay */
