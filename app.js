@@ -819,6 +819,217 @@ class ElevationProfile {
   onLeave(cb) { this.onLeaveCallback = cb; }
 }
 
+/* ───────────────────── GPX Recorder ───────────────────── */
+
+class GPXRecorder {
+  constructor(map) {
+    this.map = map;
+    this.points = [];
+    this.state = 'idle'; // idle | recording | paused | stopped
+    this._watchId = null;
+    this._startTime = null;
+    this._elapsed = 0;
+    this._timerInterval = null;
+    this._polyline = null;
+    this._latlngs = [];
+
+    this.fab = document.getElementById('rec-fab');
+    this.panel = document.getElementById('rec-panel');
+    this.btnStart = document.getElementById('rec-start');
+    this.btnPause = document.getElementById('rec-pause');
+    this.btnResume = document.getElementById('rec-resume');
+    this.btnStop = document.getElementById('rec-stop');
+    this.btnDownload = document.getElementById('rec-download');
+    this.elDist = document.getElementById('rec-distance');
+    this.elDur = document.getElementById('rec-duration');
+    this.elPts = document.getElementById('rec-points');
+
+    this.fab.addEventListener('click', () => this._togglePanel());
+    document.getElementById('rec-panel-close').addEventListener('click', () => this._closePanel());
+    this.btnStart.addEventListener('click', () => this.start());
+    this.btnPause.addEventListener('click', () => this.pause());
+    this.btnResume.addEventListener('click', () => this.resume());
+    this.btnStop.addEventListener('click', () => this.stop());
+    this.btnDownload.addEventListener('click', () => this.download());
+  }
+
+  _togglePanel() {
+    if (this.panel.classList.contains('hidden')) {
+      this.panel.classList.remove('hidden');
+      this.fab.classList.add('hidden');
+    } else {
+      this._closePanel();
+    }
+  }
+
+  _closePanel() {
+    this.panel.classList.add('hidden');
+    this.fab.classList.remove('hidden');
+  }
+
+  start() {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    this.points = [];
+    this._latlngs = [];
+    this._elapsed = 0;
+    this._startTime = Date.now();
+    this.state = 'recording';
+
+    if (this._polyline) {
+      this.map.removeLayer(this._polyline);
+      this._polyline = null;
+    }
+    this._polyline = L.polyline([], {
+      color: '#dc2626',
+      weight: 4,
+      opacity: 0.85,
+      dashArray: '8,6',
+    }).addTo(this.map);
+
+    this._startWatch();
+    this._startTimer();
+    this._updateUI();
+  }
+
+  pause() {
+    this._elapsed += Date.now() - this._startTime;
+    this.state = 'paused';
+    this._stopWatch();
+    this._stopTimer();
+    this._updateUI();
+  }
+
+  resume() {
+    this._startTime = Date.now();
+    this.state = 'recording';
+    this._startWatch();
+    this._startTimer();
+    this._updateUI();
+  }
+
+  stop() {
+    if (this.state === 'recording') {
+      this._elapsed += Date.now() - this._startTime;
+    }
+    this.state = 'stopped';
+    this._stopWatch();
+    this._stopTimer();
+    this.fab.classList.remove('recording');
+
+    if (this._polyline) {
+      this._polyline.setStyle({ dashArray: null, opacity: 0.9 });
+    }
+
+    this._updateUI();
+  }
+
+  download() {
+    if (this.points.length === 0) {
+      alert('No points recorded.');
+      return;
+    }
+
+    const tracks = [{ name: 'Recorded Track', points: this.points }];
+    const gpx = GPXExporter.export(tracks, [], 'Recorded Track');
+    const ts = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    GPXExporter.download(gpx, `recorded_${ts}.gpx`);
+  }
+
+  _startWatch() {
+    this._watchId = navigator.geolocation.watchPosition(
+      (pos) => this._onPosition(pos),
+      (err) => console.warn('[Recorder] GPS error:', err.message),
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+    );
+    this.fab.classList.add('recording');
+  }
+
+  _stopWatch() {
+    if (this._watchId !== null) {
+      navigator.geolocation.clearWatch(this._watchId);
+      this._watchId = null;
+    }
+  }
+
+  _startTimer() {
+    this._timerInterval = setInterval(() => this._updateStats(), 1000);
+  }
+
+  _stopTimer() {
+    if (this._timerInterval) {
+      clearInterval(this._timerInterval);
+      this._timerInterval = null;
+    }
+  }
+
+  _onPosition(pos) {
+    const pt = {
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude,
+      ele: pos.coords.altitude,
+      time: new Date(pos.timestamp),
+    };
+    this.points.push(pt);
+    this._latlngs.push([pt.lat, pt.lon]);
+
+    if (this._polyline) {
+      this._polyline.setLatLngs(this._latlngs);
+    }
+
+    this._updateStats();
+  }
+
+  _totalDist() {
+    let dist = 0;
+    for (let i = 1; i < this.points.length; i++) {
+      dist += StatsCalculator.haversine(
+        this.points[i - 1].lat, this.points[i - 1].lon,
+        this.points[i].lat, this.points[i].lon
+      );
+    }
+    return dist;
+  }
+
+  _getElapsed() {
+    let e = this._elapsed;
+    if (this.state === 'recording' && this._startTime) {
+      e += Date.now() - this._startTime;
+    }
+    return e / 1000;
+  }
+
+  _updateStats() {
+    const dist = this._totalDist();
+    const secs = this._getElapsed();
+    this.elDist.textContent = formatDist(dist);
+    this.elDur.textContent = this._fmtDur(secs);
+    this.elPts.textContent = this.points.length;
+  }
+
+  _fmtDur(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.floor(s % 60);
+    return h > 0
+      ? `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
+      : `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  _updateUI() {
+    const s = this.state;
+    this.btnStart.classList.toggle('hidden', s !== 'idle');
+    this.btnPause.classList.toggle('hidden', s !== 'recording');
+    this.btnResume.classList.toggle('hidden', s !== 'paused');
+    this.btnStop.classList.toggle('hidden', s === 'idle' || s === 'stopped');
+    this.btnStop.disabled = false;
+    this.btnDownload.classList.toggle('hidden', s !== 'stopped' || this.points.length === 0);
+  }
+}
+
 /* ───────────────────── App Controller ───────────────────── */
 
 class App {
@@ -841,6 +1052,7 @@ class App {
     this._loadManifest();
     this._loadPhotos();
     this.mapManager.initLocateControl();
+    this.recorder = new GPXRecorder(this.mapManager.map);
   }
 
   _initUI() {
