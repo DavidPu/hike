@@ -175,15 +175,22 @@ body {
   display: none;
 }
 
-/* Geolocation marker */
-.location-pulse {
-  animation: loc-pulse 2s ease-out infinite;
+/* Locate control */
+.locate-control a {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 34px !important;
+  height: 34px !important;
+  color: #333;
 }
 
-@keyframes loc-pulse {
-  0% { stroke-opacity: 1; }
-  50% { stroke-opacity: 0.4; }
-  100% { stroke-opacity: 1; }
+.locate-control a svg {
+  display: block;
+}
+
+.locate-control a.located svg {
+  color: #3b82f6;
 }
 
 .stat-row {
@@ -661,11 +668,18 @@ body {
 
 /* Responsive */
 @media (max-width: 640px) {
-  #app-header { padding: 0 10px; height: 46px; }
-  .header-left h1 { font-size: 14px; }
-  #track-select { max-width: 120px; font-size: 12px; }
-  .header-btn, .file-btn { padding: 5px 8px; font-size: 12px; }
-  .header-btn svg, .file-btn svg { display: none; }
+  #app-header { padding: 0 8px; height: 44px; }
+  .header-left h1 { font-size: 13px; }
+  .header-right { gap: 5px; }
+  #track-select { max-width: 110px; font-size: 12px; padding: 5px 22px 5px 6px; }
+  .btn-label { display: none; }
+  .header-btn, .file-btn {
+    padding: 6px;
+    gap: 0;
+    min-width: 32px;
+    justify-content: center;
+  }
+  .header-btn svg, .file-btn svg { display: block; }
   #stats-overlay { top: 6px; right: 6px; padding: 0; min-width: 200px; }
   #stats-toggle {
     display: flex;

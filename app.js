@@ -216,11 +216,34 @@ class MapManager {
     this._watchId = null;
   }
 
-  startGeolocation() {
+  initLocateControl() {
     if (!navigator.geolocation) return;
-    if (this._watchId !== null) return;
 
-    this._watchId = navigator.geolocation.watchPosition(
+    const LocateControl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: () => {
+        const btn = L.DomUtil.create('div', 'leaflet-bar leaflet-control locate-control');
+        btn.innerHTML = '<a href="#" title="Show my location" role="button" aria-label="Show my location">'
+          + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+          + '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3m10-10h-3M5 12H2"/><circle cx="12" cy="12" r="8"/>'
+          + '</svg></a>';
+        L.DomEvent.disableClickPropagation(btn);
+        L.DomEvent.on(btn, 'click', (e) => {
+          L.DomEvent.preventDefault(e);
+          this._locateUser(true);
+        });
+        return btn;
+      },
+    });
+
+    new LocateControl().addTo(this.map);
+    this._locateUser(false);
+  }
+
+  _locateUser(panTo) {
+    const el = this.map.getContainer().querySelector('.locate-control a');
+
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
@@ -229,18 +252,17 @@ class MapManager {
         if (!this._locationMarker) {
           this._locationMarker = L.circleMarker([lat, lon], {
             radius: 7,
-            color: '#3b82f6',
+            color: '#ffffff',
             fillColor: '#3b82f6',
             fillOpacity: 1,
             weight: 3,
-            className: 'location-pulse',
           }).addTo(this.map);
 
           this._locationCircle = L.circle([lat, lon], {
             radius: accuracy,
             color: '#3b82f6',
             fillColor: '#3b82f6',
-            fillOpacity: 0.08,
+            fillOpacity: 0.1,
             weight: 1,
             interactive: false,
           }).addTo(this.map);
@@ -249,10 +271,32 @@ class MapManager {
           this._locationCircle.setLatLng([lat, lon]);
           this._locationCircle.setRadius(accuracy);
         }
+
+        if (el) el.classList.add('located');
+        if (panTo) this.map.setView([lat, lon], Math.max(this.map.getZoom(), 15));
       },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      () => {
+        if (panTo) alert('Unable to get your location.');
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 }
     );
+
+    if (this._watchId === null) {
+      this._watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const accuracy = pos.coords.accuracy;
+          if (this._locationMarker) {
+            this._locationMarker.setLatLng([lat, lon]);
+            this._locationCircle.setLatLng([lat, lon]);
+            this._locationCircle.setRadius(accuracy);
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    }
   }
 
   clear() {
@@ -796,7 +840,7 @@ class App {
     this._initDragDrop();
     this._loadManifest();
     this._loadPhotos();
-    this.mapManager.startGeolocation();
+    this.mapManager.initLocateControl();
   }
 
   _initUI() {
