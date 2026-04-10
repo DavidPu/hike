@@ -210,6 +210,7 @@ class MapManager {
     this.trackLayers = [];
     this.hoverMarker = null;
     this.waypointMarkers = [];
+    this.photoMarkers = [];
   }
 
   clear() {
@@ -221,6 +222,27 @@ class MapManager {
       this.map.removeLayer(this.hoverMarker);
       this.hoverMarker = null;
     }
+  }
+
+  clearPhotos() {
+    this.photoMarkers.forEach(m => this.map.removeLayer(m));
+    this.photoMarkers = [];
+  }
+
+  loadPhotos(photos, onPhotoClick) {
+    this.clearPhotos();
+    photos.forEach((photo, i) => {
+      const icon = L.divIcon({
+        className: 'photo-marker-wrapper',
+        html: `<div class="photo-marker"><img src="${photo.thumb}" alt="${photo.name}" loading="lazy"></div>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
+      const marker = L.marker([photo.lat, photo.lon], { icon })
+        .addTo(this.map);
+      marker.on('click', () => onPhotoClick(i));
+      this.photoMarkers.push(marker);
+    });
   }
 
   loadTrack(points, stats, { fitBounds = true } = {}) {
@@ -336,6 +358,200 @@ class MapManager {
       this.map.removeLayer(this.hoverMarker);
       this.hoverMarker = null;
     }
+  }
+
+  addPOIMarker(poi, { onEdit, onDelete }) {
+    const icon = L.divIcon({
+      className: 'poi-marker-wrapper',
+      html: '<div class="poi-marker-icon"></div>',
+      iconSize: [28, 28],
+      iconAnchor: [4, 28],
+    });
+
+    const marker = L.marker([poi.lat, poi.lon], { icon }).addTo(this.map);
+
+    const popupHtml = this._poiPopupHtml(poi);
+    const popup = L.popup({ className: 'poi-popup', closeButton: true, maxWidth: 280, minWidth: 240 })
+      .setContent(popupHtml);
+    marker.bindPopup(popup);
+
+    marker.on('popupopen', () => {
+      const container = marker.getPopup().getElement();
+      if (!container) return;
+
+      const saveBtn = container.querySelector('.poi-btn-save');
+      const deleteBtn = container.querySelector('.poi-btn-delete');
+      const nameInput = container.querySelector('.poi-name-input');
+      const commentInput = container.querySelector('.poi-comment-input');
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const newName = nameInput?.value.trim() || 'Unnamed POI';
+          const newComment = commentInput?.value.trim() || '';
+          onEdit({ ...poi, name: newName, comment: newComment });
+          marker.closePopup();
+        });
+      }
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          onDelete(poi);
+          marker.closePopup();
+        });
+      }
+    });
+
+    poi._marker = marker;
+    return marker;
+  }
+
+  removePOIMarker(poi) {
+    if (poi._marker) {
+      this.map.removeLayer(poi._marker);
+      poi._marker = null;
+    }
+  }
+
+  openPOIPopup(poi) {
+    if (poi._marker) {
+      this.map.setView([poi.lat, poi.lon], this.map.getZoom());
+      poi._marker.openPopup();
+    }
+  }
+
+  updatePOIPopup(poi) {
+    if (poi._marker) {
+      const popup = poi._marker.getPopup();
+      if (popup) popup.setContent(this._poiPopupHtml(poi));
+    }
+  }
+
+  _poiPopupHtml(poi) {
+    return `<div class="poi-form">
+      <div class="poi-form-title">Place of Interest</div>
+      <div class="field">
+        <label>Name</label>
+        <input class="poi-name-input" type="text" value="${this._esc(poi.name)}" placeholder="e.g. Scenic viewpoint">
+      </div>
+      <div class="field">
+        <label>Comment</label>
+        <textarea class="poi-comment-input" placeholder="Add a note…">${this._esc(poi.comment)}</textarea>
+      </div>
+      <div class="poi-info">${formatEle(poi.ele)} · ${poi.lat.toFixed(5)}, ${poi.lon.toFixed(5)}</div>
+      <div class="poi-form-actions">
+        <button class="poi-btn-save">Save</button>
+        <button class="poi-btn-delete">Delete</button>
+      </div>
+    </div>`;
+  }
+
+  _esc(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  showNewPOIPopup(latlng, ele, onSave, onCancel) {
+    let saved = false;
+
+    const popup = L.popup({ className: 'poi-popup', closeButton: true, maxWidth: 280, minWidth: 240 })
+      .setLatLng(latlng)
+      .setContent(`<div class="poi-form">
+        <div class="poi-form-title">New Place of Interest</div>
+        <div class="field">
+          <label>Name</label>
+          <input class="poi-name-input" type="text" placeholder="e.g. Scenic viewpoint" autofocus>
+        </div>
+        <div class="field">
+          <label>Comment</label>
+          <textarea class="poi-comment-input" placeholder="Add a note…"></textarea>
+        </div>
+        <div class="poi-info">${formatEle(ele)} · ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</div>
+        <div class="poi-form-actions">
+          <button class="poi-btn-save">Add</button>
+          <button class="poi-btn-cancel">Cancel</button>
+        </div>
+      </div>`)
+      .openOn(this.map);
+
+    const container = popup.getElement();
+    if (container) {
+      const nameInput = container.querySelector('.poi-name-input');
+      if (nameInput) nameInput.focus();
+
+      container.querySelector('.poi-btn-save')?.addEventListener('click', () => {
+        saved = true;
+        const name = container.querySelector('.poi-name-input')?.value.trim() || 'Unnamed POI';
+        const comment = container.querySelector('.poi-comment-input')?.value.trim() || '';
+        this.map.closePopup(popup);
+        onSave(name, comment);
+      });
+
+      container.querySelector('.poi-btn-cancel')?.addEventListener('click', () => {
+        this.map.closePopup(popup);
+      });
+    }
+
+    this.map.once('popupclose', () => {
+      if (!saved) onCancel();
+    });
+
+    return popup;
+  }
+}
+
+/* ───────────────────── GPX Exporter ───────────────────── */
+
+class GPXExporter {
+  static export(tracks, pois, trackName) {
+    const lines = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+      '<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="GPX Trace Viewer" version="1.1">',
+      '  <metadata>',
+      `    <time>${new Date().toISOString()}</time>`,
+      '  </metadata>',
+    ];
+
+    for (const poi of pois) {
+      lines.push(`  <wpt lat="${poi.lat}" lon="${poi.lon}">`);
+      if (poi.ele !== null && poi.ele !== undefined) lines.push(`    <ele>${poi.ele}</ele>`);
+      lines.push(`    <name>${GPXExporter._xml(poi.name)}</name>`);
+      if (poi.comment) lines.push(`    <cmt>${GPXExporter._xml(poi.comment)}</cmt>`);
+      lines.push(`    <desc>${GPXExporter._xml(poi.comment || '')}</desc>`);
+      lines.push('  </wpt>');
+    }
+
+    for (const track of tracks) {
+      lines.push('  <trk>');
+      lines.push(`    <name>${GPXExporter._xml(trackName || track.name || 'Track')}</name>`);
+      lines.push('    <trkseg>');
+      for (const pt of track.points) {
+        lines.push(`      <trkpt lat="${pt.lat}" lon="${pt.lon}">`);
+        if (pt.ele !== null && pt.ele !== undefined) lines.push(`        <ele>${pt.ele}</ele>`);
+        if (pt.time) lines.push(`        <time>${pt.time instanceof Date ? pt.time.toISOString() : pt.time}</time>`);
+        lines.push('      </trkpt>');
+      }
+      lines.push('    </trkseg>');
+      lines.push('  </trk>');
+    }
+
+    lines.push('</gpx>');
+    return lines.join('\n');
+  }
+
+  static _xml(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  static download(content, filename) {
+    const blob = new Blob([content], { type: 'application/gpx+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -525,10 +741,19 @@ class App {
     this.elevationProfile = new ElevationProfile('elevation-chart');
     this.currentTrack = null;
     this.currentStats = null;
+    this.parsedTracks = [];
+    this.photos = [];
+    this.photosVisible = true;
+    this.pois = [];
+    this.poiMode = false;
+    this._poiIdCounter = 0;
 
     this._initUI();
+    this._initPOI();
+    this._initLightbox();
     this._initDragDrop();
     this._loadManifest();
+    this._loadPhotos();
   }
 
   _initUI() {
@@ -562,6 +787,127 @@ class App {
     this.elevationProfile.onLeave(() => {
       this.mapManager.removeHoverMarker();
     });
+
+    document.getElementById('btn-export').addEventListener('click', () => this._exportGPX());
+
+    this.photosBtn = document.getElementById('btn-toggle-photos');
+    this.photosBtn.addEventListener('click', () => this._togglePhotos());
+  }
+
+  _togglePhotos() {
+    this.photosVisible = !this.photosVisible;
+    this.photosBtn.classList.toggle('active', this.photosVisible);
+    if (this.photosVisible) {
+      if (this.photos.length > 0) {
+        this.mapManager.loadPhotos(this.photos, (idx) => this._showPhoto(idx));
+      }
+    } else {
+      this.mapManager.clearPhotos();
+    }
+  }
+
+  _initPOI() {
+    this.poiBtn = document.getElementById('btn-add-poi');
+    this.poiPanel = document.getElementById('poi-panel');
+    this.poiList = document.getElementById('poi-list');
+
+    this.poiBtn.addEventListener('click', () => this._togglePOIMode());
+
+    document.getElementById('poi-panel-close').addEventListener('click', () => {
+      this.poiPanel.classList.add('hidden');
+    });
+
+    this.mapManager.map.on('click', (e) => {
+      if (!this.poiMode || !this.currentTrack) return;
+      const nearest = this._findNearestPoint(e.latlng);
+      if (nearest.idx < 0) return;
+      const pt = this.currentTrack[nearest.idx];
+
+      this.mapManager.showNewPOIPopup(
+        L.latLng(pt.lat, pt.lon),
+        pt.ele,
+        (name, comment) => {
+          this._addPOI({ lat: pt.lat, lon: pt.lon, ele: pt.ele, name, comment });
+          this._togglePOIMode(false);
+        },
+        () => {}
+      );
+    });
+  }
+
+  _togglePOIMode(force) {
+    this.poiMode = force !== undefined ? force : !this.poiMode;
+    this.poiBtn.classList.toggle('active', this.poiMode);
+    document.body.classList.toggle('poi-mode-active', this.poiMode);
+  }
+
+  _addPOI(data) {
+    const poi = {
+      id: ++this._poiIdCounter,
+      lat: data.lat,
+      lon: data.lon,
+      ele: data.ele,
+      name: data.name || 'Unnamed POI',
+      comment: data.comment || '',
+    };
+    this.pois.push(poi);
+
+    this.mapManager.addPOIMarker(poi, {
+      onEdit: (updated) => this._updatePOI(updated),
+      onDelete: (p) => this._deletePOI(p),
+    });
+
+    this._renderPOIPanel();
+  }
+
+  _updatePOI(updated) {
+    const idx = this.pois.findIndex(p => p.id === updated.id);
+    if (idx < 0) return;
+    this.pois[idx].name = updated.name;
+    this.pois[idx].comment = updated.comment;
+    this.mapManager.updatePOIPopup(this.pois[idx]);
+    this._renderPOIPanel();
+  }
+
+  _deletePOI(poi) {
+    this.mapManager.removePOIMarker(poi);
+    this.pois = this.pois.filter(p => p.id !== poi.id);
+    this._renderPOIPanel();
+  }
+
+  _renderPOIPanel() {
+    if (this.pois.length === 0) {
+      this.poiPanel.classList.add('hidden');
+      return;
+    }
+
+    this.poiPanel.classList.remove('hidden');
+    this.poiList.innerHTML = this.pois.map(poi => `
+      <div class="poi-list-item" data-poi-id="${poi.id}">
+        <div class="poi-list-name">${poi.name}</div>
+        ${poi.comment ? `<div class="poi-list-comment">${poi.comment}</div>` : ''}
+      </div>
+    `).join('');
+
+    this.poiList.querySelectorAll('.poi-list-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = parseInt(el.dataset.poiId);
+        const poi = this.pois.find(p => p.id === id);
+        if (poi) this.mapManager.openPOIPopup(poi);
+      });
+    });
+  }
+
+  _exportGPX() {
+    if (!this.parsedTracks || this.parsedTracks.length === 0) {
+      alert('No track loaded to export');
+      return;
+    }
+
+    const trackName = this.trackSelect.selectedOptions[0]?.textContent || 'Track';
+    const gpxContent = GPXExporter.export(this.parsedTracks, this.pois, trackName);
+    const filename = trackName.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_') + '_export.gpx';
+    GPXExporter.download(gpxContent, filename);
   }
 
   _initDragDrop() {
@@ -691,6 +1037,7 @@ class App {
 
   _processMultipleGPX(xmlStrings) {
     this.mapManager.clear();
+    this.parsedTracks = [];
 
     let allPoints = [];
     const hoverLines = [];
@@ -699,6 +1046,7 @@ class App {
       const parsed = GPXParser.parse(xml);
       if (parsed.tracks.length === 0) continue;
 
+      this.parsedTracks.push(...parsed.tracks);
       const trackPoints = parsed.tracks.flatMap(t => t.points);
       const trackStats = StatsCalculator.compute(trackPoints);
       const hoverLine = this.mapManager.loadTrack(trackPoints, trackStats, { fitBounds: false });
@@ -753,6 +1101,7 @@ class App {
       return;
     }
 
+    this.parsedTracks = parsed.tracks;
     const allPoints = parsed.tracks.flatMap(t => t.points);
     const stats = StatsCalculator.compute(allPoints);
 
@@ -817,6 +1166,60 @@ class App {
     }
 
     return { idx: minIdx, dist: Math.sqrt(minDist) };
+  }
+
+  _initLightbox() {
+    this.lightbox = document.getElementById('lightbox');
+    this.lbImage = document.getElementById('lb-image');
+    this.lbCaption = document.getElementById('lb-caption');
+    this.lbPrev = document.getElementById('lb-prev');
+    this.lbNext = document.getElementById('lb-next');
+    this._lbIndex = 0;
+
+    this.lightbox.addEventListener('click', (e) => {
+      if (e.target === this.lightbox || e.target.id === 'lb-close') {
+        this.lightbox.classList.add('hidden');
+      }
+    });
+
+    this.lbPrev.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._showPhoto(this._lbIndex - 1);
+    });
+
+    this.lbNext.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._showPhoto(this._lbIndex + 1);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (this.lightbox.classList.contains('hidden')) return;
+      if (e.key === 'Escape') this.lightbox.classList.add('hidden');
+      else if (e.key === 'ArrowLeft') this._showPhoto(this._lbIndex - 1);
+      else if (e.key === 'ArrowRight') this._showPhoto(this._lbIndex + 1);
+    });
+  }
+
+  _showPhoto(idx) {
+    if (this.photos.length === 0) return;
+    this._lbIndex = ((idx % this.photos.length) + this.photos.length) % this.photos.length;
+    const photo = this.photos[this._lbIndex];
+    this.lbImage.src = photo.src;
+    this.lbCaption.textContent = photo.date ? photo.date.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3') : photo.name;
+    this.lightbox.classList.remove('hidden');
+  }
+
+  async _loadPhotos() {
+    try {
+      const resp = await fetch('pics-manifest.json?t=' + Date.now());
+      if (!resp.ok) return;
+      this.photos = await resp.json();
+      if (this.photos.length > 0) {
+        this.mapManager.loadPhotos(this.photos, (idx) => this._showPhoto(idx));
+      }
+    } catch {
+      // No photos — that's fine
+    }
   }
 
   _updateStats(stats) {
