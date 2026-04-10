@@ -1035,7 +1035,7 @@ class App {
 
   async _loadManifest() {
     try {
-      const resp = await fetch('gpx-manifest.json?t=' + Date.now());
+      const resp = await fetch('gpx-manifest.json');
       if (!resp.ok) throw new Error('No manifest');
       this.manifest = await resp.json();
 
@@ -1302,7 +1302,7 @@ class App {
 
   async _loadPhotos() {
     try {
-      const resp = await fetch('pics-manifest.json?t=' + Date.now());
+      const resp = await fetch('pics-manifest.json');
       if (!resp.ok) return;
       this.photos = await resp.json();
     } catch {
