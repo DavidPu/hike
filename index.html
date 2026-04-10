@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPX Trace Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+  <header id="app-header">
+    <div class="header-left">
+      <h1>GPX Trace Viewer</h1>
+    </div>
+    <div class="header-right">
+      <select id="track-select" title="Select a GPX track">
+        <option value="">Loading tracks…</option>
+      </select>
+      <label class="file-btn" title="Load a local GPX file">
+        <input type="file" id="file-input" accept=".gpx" multiple hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload
+      </label>
+    </div>
+  </header>
+
+  <main id="app-main">
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="stats-overlay" class="hidden">
+        <div class="stat-row">
+          <div class="stat"><span class="stat-value" id="stat-distance">—</span><span class="stat-label">Distance</span></div>
+          <div class="stat"><span class="stat-value" id="stat-duration">—</span><span class="stat-label">Duration</span></div>
+          <div class="stat"><span class="stat-value" id="stat-moving">—</span><span class="stat-label">Moving</span></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat gain"><span class="stat-value" id="stat-gain">—</span><span class="stat-label">Gain</span></div>
+          <div class="stat loss"><span class="stat-value" id="stat-loss">—</span><span class="stat-label">Loss</span></div>
+          <div class="stat"><span class="stat-value" id="stat-max-ele">—</span><span class="stat-label">Max Elev</span></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><span class="stat-value" id="stat-avg-speed">—</span><span class="stat-label">Avg Speed</span></div>
+          <div class="stat"><span class="stat-value" id="stat-max-speed">—</span><span class="stat-label">Max Speed</span></div>
+          <div class="stat"><span class="stat-value" id="stat-avg-pace">—</span><span class="stat-label">Avg Pace</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="chart-container">
+      <canvas id="elevation-chart"></canvas>
+      <div id="chart-tooltip" class="hidden"></div>
+    </div>
+  </main>
+
+  <div id="drop-overlay" class="hidden">
+    <div class="drop-content">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Drop GPX file here</p>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
