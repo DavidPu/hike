@@ -616,26 +616,25 @@ body {
 
 #rec-fab {
   position: fixed;
-  bottom: 196px;
-  right: 12px;
-  z-index: 800;
-  width: 40px;
-  height: 40px;
+  bottom: 200px;
+  right: 14px;
+  z-index: 1100;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   box-shadow: var(--shadow-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary);
-  transition: background 0.15s, color 0.15s;
+  color: #dc2626;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
 #rec-fab:hover {
-  color: #dc2626;
-  border-color: #dc2626;
+  transform: scale(1.1);
 }
 
 #rec-fab.recording {
@@ -645,6 +644,10 @@ body {
   animation: rec-blink 1.2s ease-in-out infinite;
 }
 
+#rec-fab.recording:hover {
+  color: white;
+}
+
 @keyframes rec-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -652,9 +655,9 @@ body {
 
 #rec-panel {
   position: fixed;
-  bottom: 196px;
-  right: 12px;
-  z-index: 810;
+  bottom: 200px;
+  right: 14px;
+  z-index: 1100;
   width: 220px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
@@ -777,8 +780,8 @@ body {
 .rec-btn-download:hover { background: #0f766e; }
 
 @media (max-width: 640px) {
-  #rec-fab { bottom: 152px; right: 8px; width: 36px; height: 36px; }
-  #rec-panel { bottom: 152px; right: 8px; width: 200px; }
+  #rec-fab { bottom: 156px; right: 8px; width: 40px; height: 40px; }
+  #rec-panel { bottom: 156px; right: 8px; width: 200px; }
 }
 
 /* Drop overlay */
