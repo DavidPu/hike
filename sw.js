@@ -11,7 +11,10 @@ const TILE_HOSTS = [
   'server.arcgisonline.com',
 ];
 
-// ─── Install: precache app shell + all assets ───
+const APP_SHELL_FILES = ['index.html', 'app.js', 'style.css', 'manifest.json',
+  'gpx-manifest.json', 'pics-manifest.json', 'sw-filelist.js'];
+
+// ─── Install: precache all assets ───
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,7 +34,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k.startsWith('gpx-viewer-static-') && k !== CACHE_STATIC)
+          .filter((k) => k.startsWith('gpx-viewer-') && k !== CACHE_STATIC && k !== CACHE_TILES && k !== CACHE_RUNTIME)
           .map((k) => caches.delete(k))
       )
     )
@@ -45,9 +48,9 @@ function isMapTile(url) {
   return TILE_HOSTS.some((host) => url.hostname.includes(host));
 }
 
-function isManifestFile(url) {
+function isAppShell(url) {
   const path = url.pathname;
-  return path.endsWith('gpx-manifest.json') || path.endsWith('pics-manifest.json');
+  return APP_SHELL_FILES.some((f) => path.endsWith('/' + f) || path === '/' + f || path.endsWith(f));
 }
 
 self.addEventListener('fetch', (event) => {
@@ -55,7 +58,7 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.method !== 'GET') return;
 
-  // Map tiles: stale-while-revalidate — serve cached, refresh in background
+  // Map tiles: stale-while-revalidate
   if (isMapTile(url)) {
     event.respondWith(
       caches.open(CACHE_TILES).then(async (cache) => {
@@ -72,8 +75,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Manifest JSONs: network-first with cache fallback
-  if (isManifestFile(url)) {
+  // App shell files (HTML, JS, CSS, manifests): network-first
+  if (isAppShell(url)) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -86,7 +89,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else: cache-first
+  // Everything else (GPX, images, CDN libs): cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
