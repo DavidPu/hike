@@ -1033,8 +1033,11 @@ class GPXRecorder {
 /* ───────────────────── Route Planner ───────────────────── */
 
 class RoutePlanner {
-  constructor(map) {
+  constructor(map, elevationProfile) {
     this.map = map;
+    this._elevProfile = elevationProfile;
+    this._savedTrack = null;
+    this._savedStats = null;
     this.active = false;
     this.waypoints = [];
     this.routePoints = [];
@@ -1085,6 +1088,12 @@ class RoutePlanner {
     this.panel.classList.remove('hidden');
     document.body.classList.add('route-mode-active');
     this.map.on('click', this._mapClickHandler);
+
+    if (this._elevProfile) {
+      this._savedTrack = this._elevProfile.points;
+      this._savedStats = this._elevProfile.stats;
+    }
+    if (this.routePoints.length >= 2) this._showRouteElevation();
   }
 
   deactivate() {
@@ -1093,6 +1102,12 @@ class RoutePlanner {
     this.panel.classList.add('hidden');
     document.body.classList.remove('route-mode-active');
     this.map.off('click', this._mapClickHandler);
+
+    if (this._elevProfile && this._savedTrack && this._savedStats) {
+      this._elevProfile.load(this._savedTrack, this._savedStats);
+      this._savedTrack = null;
+      this._savedStats = null;
+    }
   }
 
   _addWaypoint(lat, lon) {
@@ -1141,6 +1156,9 @@ class RoutePlanner {
     this._renderWPList();
     this._updateStats(null);
     this.btnDownload.classList.add('hidden');
+    if (this._elevProfile && this._savedTrack && this._savedStats) {
+      this._elevProfile.load(this._savedTrack, this._savedStats);
+    }
   }
 
   _renumberMarkers() {
@@ -1250,6 +1268,7 @@ class RoutePlanner {
       const summary = feature.properties?.summary;
       this._updateStats(summary);
       this.btnDownload.classList.remove('hidden');
+      this._showRouteElevation();
 
     } catch (err) {
       console.error('[RoutePlanner]', err);
@@ -1257,6 +1276,12 @@ class RoutePlanner {
       this.hint.classList.remove('hidden');
       this._updateStats(null);
     }
+  }
+
+  _showRouteElevation() {
+    if (!this._elevProfile || this.routePoints.length < 2) return;
+    const stats = StatsCalculator.compute(this.routePoints);
+    if (stats) this._elevProfile.load(this.routePoints, stats);
   }
 
   _updateStats(summary) {
@@ -1300,7 +1325,7 @@ class App {
     this._loadPhotos();
     this.mapManager.initLocateControl();
     this.recorder = new GPXRecorder(this.mapManager.map);
-    this.routePlanner = new RoutePlanner(this.mapManager.map);
+    this.routePlanner = new RoutePlanner(this.mapManager.map, this.elevationProfile);
   }
 
   _initUI() {
