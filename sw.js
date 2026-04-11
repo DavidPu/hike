@@ -1,6 +1,6 @@
 importScripts('sw-filelist.js');
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v6';
 const CACHE_STATIC = `gpx-viewer-static-${CACHE_VERSION}`;
 const CACHE_TILES = 'gpx-viewer-tiles';
 const CACHE_RUNTIME = 'gpx-viewer-runtime';
