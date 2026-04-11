@@ -72,38 +72,6 @@
           <button id="rec-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
         </div>
       </div>
-      <div id="route-panel" class="hidden">
-        <div class="route-header">
-          <span>Route Planner</span>
-          <button id="route-panel-close" title="Close">&times;</button>
-        </div>
-        <div class="route-body">
-          <div class="route-profile-row">
-            <label>Profile</label>
-            <select id="route-profile">
-              <option value="foot-hiking">Hiking</option>
-              <option value="foot-walking">Walking</option>
-              <option value="cycling-regular">Cycling</option>
-              <option value="driving-car">Driving</option>
-            </select>
-          </div>
-          <div id="route-waypoints-list"></div>
-          <div class="route-hint" id="route-hint">Click the map to add waypoints</div>
-          <div class="route-stats hidden" id="route-stats">
-            <span id="route-dist">—</span> &middot; <span id="route-time">—</span>
-          </div>
-          <div class="route-actions">
-            <button id="route-undo" class="rec-btn route-btn-undo" disabled>Undo</button>
-            <button id="route-clear" class="rec-btn route-btn-clear" disabled>Clear</button>
-          </div>
-          <button id="route-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
-          <div id="route-key-row" class="route-key-row">
-            <label>ORS API Key</label>
-            <input type="text" id="route-api-key" placeholder="Paste key from openrouteservice.org">
-            <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">Get free key</a>
-          </div>
-        </div>
-      </div>
       <div id="stats-overlay" class="hidden">
         <div id="stats-toggle">
           <span id="stats-toggle-label">Stats</span>
@@ -134,6 +102,39 @@
       <div id="chart-tooltip" class="hidden"></div>
     </div>
   </main>
+
+  <div id="route-panel" class="hidden">
+    <div class="route-header">
+      <span>Route Planner</span>
+      <button id="route-panel-close" title="Close">&times;</button>
+    </div>
+    <div class="route-body">
+      <div class="route-profile-row">
+        <label>Profile</label>
+        <select id="route-profile">
+          <option value="foot-hiking">Hiking</option>
+          <option value="foot-walking">Walking</option>
+          <option value="cycling-regular">Cycling</option>
+          <option value="driving-car">Driving</option>
+        </select>
+      </div>
+      <div id="route-waypoints-list"></div>
+      <div class="route-hint" id="route-hint">Click the map to add waypoints</div>
+      <div class="route-stats hidden" id="route-stats">
+        <span id="route-dist">—</span> &middot; <span id="route-time">—</span>
+      </div>
+      <div class="route-actions">
+        <button id="route-undo" class="rec-btn route-btn-undo" disabled>Undo</button>
+        <button id="route-clear" class="rec-btn route-btn-clear" disabled>Clear</button>
+      </div>
+      <button id="route-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
+      <div class="route-key-row">
+        <label>ORS API Key</label>
+        <input type="text" id="route-api-key" placeholder="Paste key from openrouteservice.org">
+        <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">Get free key</a>
+      </div>
+    </div>
+  </div>
 
   <div id="poi-panel" class="hidden">
     <div class="poi-panel-header">
