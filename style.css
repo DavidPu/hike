@@ -612,6 +612,222 @@ body {
   color: var(--text-secondary);
 }
 
+/* ─── Route Planner Panel ─── */
+
+#route-panel {
+  position: absolute;
+  top: 10px;
+  left: 50px;
+  z-index: 900;
+  width: 250px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  overflow: hidden;
+  max-height: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+}
+
+.route-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.route-header button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.route-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.route-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.route-profile-row label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+#route-profile {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+#route-waypoints-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.route-wp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.route-wp-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.route-wp-coord {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.route-wp-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.route-wp-del:hover { color: var(--loss); }
+
+.route-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  text-align: center;
+}
+
+.route-stats {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.route-actions {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+
+.route-btn-undo {
+  background: var(--bg);
+  color: var(--text);
+}
+.route-btn-undo:hover:not(:disabled) { background: var(--border); }
+
+.route-btn-clear {
+  background: #fee2e2;
+  color: var(--loss);
+}
+.route-btn-clear:hover:not(:disabled) { background: #fecaca; }
+
+.route-key-row {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+
+.route-key-row label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 3px;
+}
+
+.route-key-row input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: none;
+  color: var(--text);
+}
+
+.route-key-row input:focus { border-color: var(--primary); }
+
+.route-key-row a {
+  display: inline-block;
+  font-size: 10px;
+  margin-top: 4px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.route-key-row a:hover { text-decoration: underline; }
+
+.route-mode-active #map { cursor: crosshair !important; }
+.route-mode-active .leaflet-grab { cursor: crosshair !important; }
+
+.route-marker-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 640px) {
+  #route-panel { left: 8px; width: 220px; top: 8px; }
+}
+
 /* ─── Recording FAB & Panel ─── */
 
 #rec-fab {

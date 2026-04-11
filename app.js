@@ -1030,6 +1030,253 @@ class GPXRecorder {
   }
 }
 
+/* ───────────────────── Route Planner ───────────────────── */
+
+class RoutePlanner {
+  constructor(map) {
+    this.map = map;
+    this.active = false;
+    this.waypoints = [];
+    this.routePoints = [];
+    this._routeLine = null;
+    this._directLine = null;
+
+    this.panel = document.getElementById('route-panel');
+    this.btn = document.getElementById('btn-route-planner');
+    this.wpList = document.getElementById('route-waypoints-list');
+    this.hint = document.getElementById('route-hint');
+    this.statsEl = document.getElementById('route-stats');
+    this.distEl = document.getElementById('route-dist');
+    this.timeEl = document.getElementById('route-time');
+    this.btnUndo = document.getElementById('route-undo');
+    this.btnClear = document.getElementById('route-clear');
+    this.btnDownload = document.getElementById('route-download');
+    this.profileSelect = document.getElementById('route-profile');
+    this.apiKeyInput = document.getElementById('route-api-key');
+
+    const savedKey = localStorage.getItem('ors_api_key');
+    if (savedKey) this.apiKeyInput.value = savedKey;
+
+    this.apiKeyInput.addEventListener('change', () => {
+      localStorage.setItem('ors_api_key', this.apiKeyInput.value.trim());
+    });
+
+    this.btn.addEventListener('click', () => this.toggle());
+    document.getElementById('route-panel-close').addEventListener('click', () => this.deactivate());
+    this.btnUndo.addEventListener('click', () => this.undo());
+    this.btnClear.addEventListener('click', () => this.clear());
+    this.btnDownload.addEventListener('click', () => this.download());
+    this.profileSelect.addEventListener('change', () => this._reroute());
+
+    this._mapClickHandler = (e) => {
+      if (!this.active) return;
+      this._addWaypoint(e.latlng.lat, e.latlng.lng);
+    };
+  }
+
+  toggle() {
+    if (this.active) this.deactivate();
+    else this.activate();
+  }
+
+  activate() {
+    this.active = true;
+    this.btn.classList.add('active');
+    this.panel.classList.remove('hidden');
+    document.body.classList.add('route-mode-active');
+    this.map.on('click', this._mapClickHandler);
+  }
+
+  deactivate() {
+    this.active = false;
+    this.btn.classList.remove('active');
+    this.panel.classList.add('hidden');
+    document.body.classList.remove('route-mode-active');
+    this.map.off('click', this._mapClickHandler);
+  }
+
+  _addWaypoint(lat, lon) {
+    const idx = this.waypoints.length + 1;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="route-marker-icon">${idx}</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+    const marker = L.marker([lat, lon], { icon, draggable: true }).addTo(this.map);
+    const wp = { lat, lon, marker };
+    this.waypoints.push(wp);
+
+    marker.on('dragend', () => {
+      const pos = marker.getLatLng();
+      wp.lat = pos.lat;
+      wp.lon = pos.lng;
+      this._renderWPList();
+      this._reroute();
+    });
+
+    this._renderWPList();
+    this._reroute();
+  }
+
+  _removeWaypoint(index) {
+    const wp = this.waypoints[index];
+    if (wp) this.map.removeLayer(wp.marker);
+    this.waypoints.splice(index, 1);
+    this._renumberMarkers();
+    this._renderWPList();
+    this._reroute();
+  }
+
+  undo() {
+    if (this.waypoints.length === 0) return;
+    this._removeWaypoint(this.waypoints.length - 1);
+  }
+
+  clear() {
+    this.waypoints.forEach(wp => this.map.removeLayer(wp.marker));
+    this.waypoints = [];
+    this.routePoints = [];
+    this._clearLines();
+    this._renderWPList();
+    this._updateStats(null);
+    this.btnDownload.classList.add('hidden');
+  }
+
+  _renumberMarkers() {
+    this.waypoints.forEach((wp, i) => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="route-marker-icon">${i + 1}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      wp.marker.setIcon(icon);
+    });
+  }
+
+  _renderWPList() {
+    const n = this.waypoints.length;
+    this.btnUndo.disabled = n === 0;
+    this.btnClear.disabled = n === 0;
+    this.hint.textContent = n === 0
+      ? 'Click the map to add waypoints'
+      : n === 1 ? 'Click to add more waypoints' : '';
+    this.hint.classList.toggle('hidden', n >= 2 && this.routePoints.length > 0);
+
+    this.wpList.innerHTML = this.waypoints.map((wp, i) => `
+      <div class="route-wp">
+        <div class="route-wp-num">${i + 1}</div>
+        <span class="route-wp-coord">${wp.lat.toFixed(5)}, ${wp.lon.toFixed(5)}</span>
+        <button class="route-wp-del" data-idx="${i}" title="Remove">&times;</button>
+      </div>
+    `).join('');
+
+    this.wpList.querySelectorAll('.route-wp-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._removeWaypoint(parseInt(btn.dataset.idx));
+      });
+    });
+  }
+
+  _clearLines() {
+    if (this._routeLine) { this.map.removeLayer(this._routeLine); this._routeLine = null; }
+    if (this._directLine) { this.map.removeLayer(this._directLine); this._directLine = null; }
+  }
+
+  async _reroute() {
+    this._clearLines();
+    this.routePoints = [];
+    this.btnDownload.classList.add('hidden');
+
+    if (this.waypoints.length < 2) {
+      this._updateStats(null);
+      return;
+    }
+
+    const wpLatLngs = this.waypoints.map(wp => [wp.lat, wp.lon]);
+    this._directLine = L.polyline(wpLatLngs, {
+      color: '#94a3b8',
+      weight: 2,
+      dashArray: '6,6',
+      interactive: false,
+    }).addTo(this.map);
+
+    const apiKey = this.apiKeyInput.value.trim();
+    if (!apiKey) {
+      this._updateStats(null);
+      this.hint.textContent = 'Enter ORS API key to snap to trails';
+      this.hint.classList.remove('hidden');
+      return;
+    }
+
+    const profile = this.profileSelect.value;
+    const coords = this.waypoints.map(wp => [wp.lon, wp.lat]);
+
+    try {
+      const resp = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': apiKey,
+        },
+        body: JSON.stringify({ coordinates: coords, elevation: true }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const feature = data.features?.[0];
+      if (!feature) throw new Error('No route found');
+
+      const geomCoords = feature.geometry.coordinates;
+      this.routePoints = geomCoords.map(c => ({
+        lat: c[1], lon: c[0], ele: c[2] ?? null, time: null,
+      }));
+
+      const routeLatLngs = this.routePoints.map(p => [p.lat, p.lon]);
+
+      if (this._directLine) { this.map.removeLayer(this._directLine); this._directLine = null; }
+
+      this._routeLine = L.polyline(routeLatLngs, {
+        color: '#6366f1',
+        weight: 4,
+        opacity: 0.85,
+      }).addTo(this.map);
+
+      const summary = feature.properties?.summary;
+      this._updateStats(summary);
+      this.btnDownload.classList.remove('hidden');
+
+    } catch (err) {
+      console.error('[RoutePlanner]', err);
+      this.hint.textContent = 'Route error: ' + err.message;
+      this.hint.classList.remove('hidden');
+      this._updateStats(null);
+    }
+  }
+
+  _updateStats(summary) {
+    if (!summary) {
+      this.statsEl.classList.add('hidden');
+      return;
+    }
+    this.statsEl.classList.remove('hidden');
+    this.distEl.textContent = formatDist(summary.distance);
+    this.timeEl.textContent = formatTime(summary.duration);
+  }
+
+  download() {
+    if (this.routePoints.length === 0) return;
+    const tracks = [{ name: 'Planned Route', points: this.routePoints }];
+    const gpx = GPXExporter.export(tracks, [], 'Planned Route');
+    GPXExporter.download(gpx, 'planned_route.gpx');
+  }
+}
+
 /* ───────────────────── App Controller ───────────────────── */
 
 class App {
@@ -1053,6 +1300,7 @@ class App {
     this._loadPhotos();
     this.mapManager.initLocateControl();
     this.recorder = new GPXRecorder(this.mapManager.map);
+    this.routePlanner = new RoutePlanner(this.mapManager.map);
   }
 
   _initUI() {

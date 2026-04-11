@@ -26,6 +26,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         <span class="btn-label">Photos</span>
       </button>
+      <button id="btn-route-planner" class="header-btn" title="Plan a route by placing waypoints on the map">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span class="btn-label">Route</span>
+      </button>
       <button id="btn-add-poi" class="header-btn" title="Click to add a Place of Interest on the track">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <span class="btn-label">Add POI</span>
@@ -66,6 +70,38 @@
             <button id="rec-stop" class="rec-btn rec-btn-stop hidden" disabled>Stop</button>
           </div>
           <button id="rec-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
+        </div>
+      </div>
+      <div id="route-panel" class="hidden">
+        <div class="route-header">
+          <span>Route Planner</span>
+          <button id="route-panel-close" title="Close">&times;</button>
+        </div>
+        <div class="route-body">
+          <div class="route-profile-row">
+            <label>Profile</label>
+            <select id="route-profile">
+              <option value="foot-hiking">Hiking</option>
+              <option value="foot-walking">Walking</option>
+              <option value="cycling-regular">Cycling</option>
+              <option value="driving-car">Driving</option>
+            </select>
+          </div>
+          <div id="route-waypoints-list"></div>
+          <div class="route-hint" id="route-hint">Click the map to add waypoints</div>
+          <div class="route-stats hidden" id="route-stats">
+            <span id="route-dist">—</span> &middot; <span id="route-time">—</span>
+          </div>
+          <div class="route-actions">
+            <button id="route-undo" class="rec-btn route-btn-undo" disabled>Undo</button>
+            <button id="route-clear" class="rec-btn route-btn-clear" disabled>Clear</button>
+          </div>
+          <button id="route-download" class="rec-btn rec-btn-download hidden">Download GPX</button>
+          <div id="route-key-row" class="route-key-row">
+            <label>ORS API Key</label>
+            <input type="text" id="route-api-key" placeholder="Paste key from openrouteservice.org">
+            <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">Get free key</a>
+          </div>
         </div>
       </div>
       <div id="stats-overlay" class="hidden">
