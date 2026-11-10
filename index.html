@@ -109,6 +109,17 @@
       <button id="route-panel-close" title="Close">&times;</button>
     </div>
     <div class="route-body">
+      <div class="route-gmaps-row">
+        <input type="text" id="route-gmaps-url" class="route-gmaps-url"
+               placeholder="Paste a Google Maps directions link"
+               autocomplete="off" autocapitalize="off" spellcheck="false"
+               aria-label="Google Maps directions link">
+        <button id="route-gmaps-import" class="rec-btn route-btn-gmaps">Import</button>
+        <label class="route-gmaps-heights" title="Look up terrain heights for the route (Open-Meteo)">
+          <input type="checkbox" id="route-gmaps-heights" checked> Heights
+        </label>
+        <div id="route-gmaps-status" class="route-gmaps-status hidden"></div>
+      </div>
       <div class="route-profile-row">
         <label>Profile</label>
         <select id="route-profile">
@@ -166,6 +177,9 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <!-- ES module on purpose: it is the only way to load the ES modules under lib/ from a page that
+       otherwise uses one classic script. If it fails to load, the import row hides itself. -->
+  <script type="module" src="gmaps-import.js"></script>
   <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

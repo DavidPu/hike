@@ -6,9 +6,11 @@
   --text-secondary: #64748b;
   --primary: #0d9488;
   --primary-light: #ccfbf1;
+  --primary-dark: #0f766e;
   --accent: #f59e0b;
   --gain: #16a34a;
   --loss: #dc2626;
+  --warn-ink: #b45309;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
   --radius: 8px;
@@ -657,6 +659,72 @@ body {
   overflow-y: auto;
   flex: 1;
 }
+
+/* Google Maps import — paste a directions link, get waypoints. Deliberately built from the same
+   tokens as the rest of the panel so it reads as part of it and not an embedded second app. */
+.route-gmaps-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.route-gmaps-url {
+  flex: 1 1 100%;
+  min-width: 0;
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.route-gmaps-url:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.route-gmaps-url:disabled {
+  opacity: 0.6;
+}
+
+/* .rec-btn zeroes horizontal padding because its buttons fill a flex row; this one sits inline. */
+.route-btn-gmaps {
+  padding: 6px 14px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.route-btn-gmaps:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.route-gmaps-heights {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.route-gmaps-status {
+  flex: 1 1 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.route-gmaps-status.ok { color: var(--gain); }
+.route-gmaps-status.warn { color: var(--warn-ink); }
+.route-gmaps-status.error { color: var(--loss); }
 
 .route-profile-row {
   display: flex;

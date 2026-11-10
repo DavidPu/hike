@@ -609,6 +609,9 @@ class GPXExporter {
     for (const track of tracks) {
       lines.push('  <trk>');
       lines.push(`    <name>${GPXExporter._xml(trackName || track.name || 'Track')}</name>`);
+      // Only emitted when the caller has something to say — how a track was produced is worth
+      // carrying in the file, not just on screen, because that is where it is read months later.
+      if (track.desc) lines.push(`    <desc>${GPXExporter._xml(track.desc)}</desc>`);
       lines.push('    <trkseg>');
       for (const pt of track.points) {
         lines.push(`      <trkpt lat="${pt.lat}" lon="${pt.lon}">`);
@@ -1056,6 +1059,13 @@ class RoutePlanner {
     this.btnDownload = document.getElementById('route-download');
     this.profileSelect = document.getElementById('route-profile');
     this.apiKeyInput = document.getElementById('route-api-key');
+    this.gmapsInput = document.getElementById('route-gmaps-url');
+    this.btnGmaps = document.getElementById('route-gmaps-import');
+    this.gmapsStatus = document.getElementById('route-gmaps-status');
+    this.gmapsHeights = document.getElementById('route-gmaps-heights');
+    this._gmapsAbort = null;
+    this._routeRequest = 0;
+    this._lastRoute = null;
 
     const savedKey = localStorage.getItem('ors_api_key');
     if (savedKey) this.apiKeyInput.value = savedKey;
@@ -1070,6 +1080,20 @@ class RoutePlanner {
     this.btnClear.addEventListener('click', () => this.clear());
     this.btnDownload.addEventListener('click', () => this.download());
     this.profileSelect.addEventListener('change', () => this._reroute());
+    if (this.gmapsHeights) this.gmapsHeights.addEventListener('change', () => this._reroute());
+
+    // The Google Maps importer is an ES module (gmaps-import.js) and this is a classic script, so
+    // it arrives on globalThis — or not at all, if it failed to load. Missing means the row hides
+    // itself and the planner behaves exactly as it did before the feature existed.
+    if (this.btnGmaps && this.gmapsInput) {
+      this.btnGmaps.addEventListener('click', () => this.importFromLink());
+      this.gmapsInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); this.importFromLink(); }
+      });
+      if (!globalThis.gmapsImport) {
+        this.gmapsInput.closest('.route-gmaps-row')?.classList.add('hidden');
+      }
+    }
 
     this._mapClickHandler = (e) => {
       if (!this.active) return;
@@ -1110,7 +1134,8 @@ class RoutePlanner {
     }
   }
 
-  _addWaypoint(lat, lon) {
+  /** @param {boolean} [reroute] false when adding a batch, so N stops cost one routing call. */
+  _addWaypoint(lat, lon, reroute = true) {
     const idx = this.waypoints.length + 1;
     const icon = L.divIcon({
       className: '',
@@ -1131,7 +1156,7 @@ class RoutePlanner {
     });
 
     this._renderWPList();
-    this._reroute();
+    if (reroute) this._reroute();
   }
 
   _removeWaypoint(index) {
@@ -1152,6 +1177,7 @@ class RoutePlanner {
     this.waypoints.forEach(wp => this.map.removeLayer(wp.marker));
     this.waypoints = [];
     this.routePoints = [];
+    this._lastRoute = null;
     this._clearLines();
     this._renderWPList();
     this._updateStats(null);
@@ -1206,6 +1232,12 @@ class RoutePlanner {
     this._clearLines();
     this.routePoints = [];
     this.btnDownload.classList.add('hidden');
+    // Each call owns the map until a newer one starts. Without this, dragging a waypoint while a
+    // slow request is in flight paints the older geometry and the newer one never appears.
+    const requestId = ++this._routeRequest;
+    // Where these waypoints came from. Read before any await, so a concurrent call cannot
+    // reparent one route's provenance onto another's.
+    const origin = { title: this._lastRoute?.title || null, url: this._lastRoute?.url || null };
 
     if (this.waypoints.length < 2) {
       this._updateStats(null);
@@ -1221,13 +1253,69 @@ class RoutePlanner {
     }).addTo(this.map);
 
     const apiKey = this.apiKeyInput.value.trim();
-    if (!apiKey) {
+    if (apiKey) {
+      await this._rerouteWithOrs(apiKey, requestId, origin);
+      return;
+    }
+
+    // No ORS key is not a reason to draw nothing. Public OpenStreetMap routers need no account and
+    // no key; the key is what snaps a route to trails, so the difference stays visible in the
+    // tooltip rather than being hidden behind an empty panel.
+    const api = globalThis.gmapsImport;
+    if (!api) {
       this._updateStats(null);
       this.hint.textContent = 'Enter ORS API key to snap to trails';
       this.hint.classList.remove('hidden');
       return;
     }
 
+    this.hint.classList.add('hidden');
+    try {
+      const result = await api.routeWaypoints(
+        this.waypoints.map(wp => ({ lat: wp.lat, lon: wp.lon })),
+        api.modeForProfile(this.profileSelect.value),
+        { heights: this.gmapsHeights ? this.gmapsHeights.checked : true },
+      );
+      if (requestId !== this._routeRequest) return;
+
+      this.routePoints = result.points;
+      this._lastRoute = {
+        provider: result.provider,
+        providerLabel: result.providerLabel,
+        approximate: result.approximate,
+        ...origin,
+      };
+
+      if (this._directLine) { this.map.removeLayer(this._directLine); this._directLine = null; }
+      this._routeLine = L.polyline(this.routePoints.map(p => [p.lat, p.lon]), {
+        // Amber and dashed when there is no road geometry behind it, so a straight-line
+        // "route" can never be mistaken for one you could walk.
+        color: result.approximate ? '#f59e0b' : '#6366f1',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: result.approximate ? '8,8' : null,
+      }).addTo(this.map);
+
+      this._updateStats({ distance: result.distance, duration: result.duration }, result.durationEstimated);
+      this.statsEl.title = result.providerLabel;
+      this.btnDownload.classList.remove('hidden');
+      this._showRouteElevation();
+
+      const warnings = result.warnings || [];
+      if (warnings.length) {
+        this.hint.textContent = warnings[0];
+        this.hint.classList.remove('hidden');
+      }
+    } catch (err) {
+      if (requestId !== this._routeRequest) return;
+      console.error('[RoutePlanner]', err);
+      this.hint.textContent = 'Route error: ' + err.message;
+      this.hint.classList.remove('hidden');
+      this._updateStats(null);
+    }
+  }
+
+  async _rerouteWithOrs(apiKey, requestId, origin) {
     const profile = this.profileSelect.value;
     const coords = this.waypoints.map(wp => [wp.lon, wp.lat]);
 
@@ -1247,6 +1335,7 @@ class RoutePlanner {
       }
 
       const data = await resp.json();
+      if (requestId !== this._routeRequest) return;
       const feature = data.features?.[0];
       if (!feature) throw new Error('No route found');
 
@@ -1254,6 +1343,7 @@ class RoutePlanner {
       this.routePoints = geomCoords.map(c => ({
         lat: c[1], lon: c[0], ele: c[2] ?? null, time: null,
       }));
+      this._lastRoute = { provider: 'ors', providerLabel: 'OpenRouteService', approximate: false, ...origin };
 
       const routeLatLngs = this.routePoints.map(p => [p.lat, p.lon]);
 
@@ -1267,15 +1357,107 @@ class RoutePlanner {
 
       const summary = feature.properties?.summary;
       this._updateStats(summary);
+      this.statsEl.title = 'OpenRouteService';
       this.btnDownload.classList.remove('hidden');
       this._showRouteElevation();
 
     } catch (err) {
+      if (requestId !== this._routeRequest) return;
       console.error('[RoutePlanner]', err);
       this.hint.textContent = 'Route error: ' + err.message;
       this.hint.classList.remove('hidden');
       this._updateStats(null);
     }
+  }
+
+  /* ── Google Maps import ─────────────────────────────────────────────── */
+
+  /**
+   * Turn a pasted Google Maps directions link into waypoints on the map. Parsing is local; a short
+   * link and any stop named but not located need the network, so this is async and cancellable.
+   */
+  async importFromLink() {
+    const api = globalThis.gmapsImport;
+    if (!api || !this.gmapsInput) return;
+
+    const link = (this.gmapsInput.value || '').trim();
+    if (!link) {
+      this._gmapsStatus('Paste a Google Maps directions link first.', 'error');
+      this.gmapsInput.focus();
+      return;
+    }
+
+    this._gmapsAbort?.abort();
+    const controller = new AbortController();
+    this._gmapsAbort = controller;
+    this._setGmapsBusy(true);
+    this._gmapsStatus(api.isShortLink?.(link) ? 'Expanding short link…' : 'Reading link…');
+
+    try {
+      const imported = await api.importGoogleMapsLink(link, {
+        signal: controller.signal,
+        onProgress: (message) => this._gmapsStatus(message),
+      });
+      if (controller.signal.aborted) return;
+
+      this.clear();
+      // Set the profile before the waypoints exist, so the first routing call uses the mode the
+      // link asked for rather than whatever was left in the dropdown.
+      this.profileSelect.value = imported.profile;
+      this.gmapsHeights && (this.gmapsHeights.checked = imported.mode !== 'transit');
+      this._lastRoute = { title: imported.title, url: imported.url };
+      imported.waypoints.forEach(wp => this._addWaypoint(wp.lat, wp.lon, false));
+      this._reroute();
+
+      this._fitToWaypoints();
+      const warnings = imported.warnings || [];
+      const summary = `${imported.waypoints.length} stops from ${imported.via}` +
+        (imported.title ? ` · ${imported.title}` : '');
+      this._gmapsStatus(warnings.length ? `${summary} — ${warnings[0]}` : summary, warnings.length ? 'warn' : 'ok');
+    } catch (err) {
+      if (err?.name === 'AbortError' || controller.signal.aborted) return;
+      console.error('[RoutePlanner] import', err);
+      this._gmapsStatus(err?.message || 'Could not read that link.', 'error', err?.hint);
+    } finally {
+      if (this._gmapsAbort === controller) this._gmapsAbort = null;
+      this._setGmapsBusy(false);
+    }
+  }
+
+  _fitToWaypoints() {
+    if (this.waypoints.length === 0) return;
+    const bounds = L.latLngBounds(this.waypoints.map(wp => [wp.lat, wp.lon]));
+    if (!bounds.isValid()) return;
+    if (this.waypoints.length === 1) this.map.setView(bounds.getCenter(), 14);
+    else this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 15 });
+  }
+
+  _gmapsStatus(message, kind = '', hint = null) {
+    if (!this.gmapsStatus) return;
+    if (!message) {
+      this.gmapsStatus.className = 'route-gmaps-status hidden';
+      return;
+    }
+    this.gmapsStatus.textContent = hint ? `${message} ${hint}` : message;
+    this.gmapsStatus.className = `route-gmaps-status ${kind}`;
+  }
+
+  _setGmapsBusy(on) {
+    if (!this.btnGmaps) return;
+    this.btnGmaps.disabled = on;
+    this.btnGmaps.textContent = on ? 'Importing…' : 'Import';
+    if (this.gmapsInput) this.gmapsInput.disabled = on;
+  }
+
+  /** Sluggish but safe: a stop name becomes a filename, and a name can be anything at all. */
+  _fileName(name) {
+    const slug = String(name || '')
+      .normalize('NFKD').replace(/[^\w\s-]/g, '').trim()
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60)
+      .replace(/^-|-$/g, '');
+    return slug || 'planned-route';
   }
 
   _showRouteElevation() {
@@ -1284,21 +1466,36 @@ class RoutePlanner {
     if (stats) this._elevProfile.load(this.routePoints, stats);
   }
 
-  _updateStats(summary) {
+  _updateStats(summary, estimated = false) {
     if (!summary) {
       this.statsEl.classList.add('hidden');
       return;
     }
     this.statsEl.classList.remove('hidden');
     this.distEl.textContent = formatDist(summary.distance);
-    this.timeEl.textContent = formatTime(summary.duration);
+    // A duration from an average speed is not a routing result. Marked, rather than sitting next
+    // to the distance looking like it came from the same place.
+    this.timeEl.textContent = formatTime(summary.duration) + (estimated ? ' ≈' : '');
+    this.timeEl.title = estimated
+      ? 'Estimated from an average speed — this route has no road geometry.'
+      : '';
   }
 
   download() {
     if (this.routePoints.length === 0) return;
-    const tracks = [{ name: 'Planned Route', points: this.routePoints }];
-    const gpx = GPXExporter.export(tracks, [], 'Planned Route');
-    GPXExporter.download(gpx, 'planned_route.gpx');
+    const route = this._lastRoute || {};
+    const name = route.title || 'Planned Route';
+    const labelled = route.approximate ? `${name} (approximate)` : name;
+    const desc = [
+      route.approximate
+        ? 'Straight-line segments between stops: no road geometry was available, so this is not a routable path.'
+        : null,
+      route.providerLabel ? `Route source: ${route.providerLabel}.` : null,
+      this._lastRoute?.url ? `From ${this._lastRoute.url}` : null,
+    ].filter(Boolean).join(' ');
+    const tracks = [{ name: labelled, points: this.routePoints, desc }];
+    const gpx = GPXExporter.export(tracks, [], labelled);
+    GPXExporter.download(gpx, `${this._fileName(labelled)}.gpx`);
   }
 }
 

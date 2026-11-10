@@ -1,0 +1,15 @@
+{
+  "name": "hike",
+  "version": "1.0.0",
+  "description": "GPX Trace Viewer — offline-first GPX viewer with elevation profiles, photos, POIs, track recording, and route planning from a Google Maps link.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/",
+    "sw": "python3 generate-sw-filelist.py",
+    "smoke": "node scripts/e2e-smoke.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

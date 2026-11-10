@@ -17,6 +17,7 @@ PRECACHE_PATTERNS = {
         "index.html",
         "style.css",
         "app.js",
+        "gmaps-import.js",
         "manifest.json",
         "gpx-manifest.json",
         "pics-manifest.json",
@@ -34,6 +35,24 @@ PRECACHE_PATTERNS = {
 SCAN_DIRS = ["gpx", "pics/thumbs", "pics/web"]
 EXTENSIONS = {".gpx", ".jpg", ".jpeg", ".png"}
 
+# Every ES module the page loads at runtime. These have to be precached like any other asset:
+# a module that is not in the cache is not a degraded feature offline, it is an import that fails,
+# and the Google Maps importer hides itself when it cannot load.
+LIB_DIRS = ["lib"]
+LIB_EXTENSIONS = {".js"}
+
+
+def scan_lib():
+    files = []
+    for scan_dir in LIB_DIRS:
+        dirpath = ROOT / scan_dir
+        if not dirpath.exists():
+            continue
+        for fp in sorted(dirpath.rglob("*")):
+            if fp.is_file() and fp.suffix.lower() in LIB_EXTENSIONS:
+                files.append(str(fp.relative_to(ROOT)))
+    return files
+
 
 def scan_files():
     files = []
@@ -49,7 +68,8 @@ def scan_files():
 
 def main():
     asset_files = scan_files()
-    all_local = PRECACHE_PATTERNS["app_shell"] + asset_files
+    lib_files = scan_lib()
+    all_local = PRECACHE_PATTERNS["app_shell"] + lib_files + asset_files
     all_cdn = PRECACHE_PATTERNS["cdn"]
 
     output = (
@@ -63,6 +83,7 @@ def main():
 
     print(f"Written {len(all_local)} local + {len(all_cdn)} CDN = {len(all_local) + len(all_cdn)} entries to sw-filelist.js")
     print(f"  App shell: {len(PRECACHE_PATTERNS['app_shell'])}")
+    print(f"  ES modules (lib/): {len(lib_files)}")
     print(f"  GPX files: {sum(1 for f in asset_files if f.endswith('.gpx'))}")
     print(f"  Thumbnails: {sum(1 for f in asset_files if 'thumbs' in f)}")
     print(f"  Web images: {sum(1 for f in asset_files if 'pics/web' in f)}")
