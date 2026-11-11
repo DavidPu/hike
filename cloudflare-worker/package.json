@@ -1,0 +1,18 @@
+{
+  "name": "hike-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for hike app AI features",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "jina-embeddings": "^4.0.0",
+    "@jina-ai/embedder": "^4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

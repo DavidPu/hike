@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A very small XSD that validates the core GPX 1.1 structure.
+  It does *not* cover every optional element but is sufficient for
+  the parser used in this project.  The schema is intentionally
+  lightweight to keep the dependency footprint small.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.topografix.com/GPX/1/1"
+           xmlns="http://www.topografix.com/GPX/1/1"
+           elementFormDefault="qualified" version="1.1">
+  <xs:element name="gpx">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="wpt" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="rte" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="trk" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:string" use="required" fixed="1.1"/>
+      <xs:attribute name="creator" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Minimal definitions for waypoints, routes and tracks -->
+  <xs:complexType name="wptType">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string" minOccurs="0"/>
+      <xs:element name="ele" type="xs:decimal" minOccurs="0"/>
+      <xs:element name="time" type="xs:dateTime" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="lat" type="xs:decimal" use="required"/>
+    <xs:attribute name="lon" type="xs:decimal" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="trkType">
+    <xs:sequence>
+      <xs:element name="name" type="xs:string" minOccurs="0"/>
+      <xs:element name="trkseg" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="trksegType">
+    <xs:sequence>
+      <xs:element name="trkpt" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="trkptType">
+    <xs:sequence>
+      <xs:element name="ele" type="xs:decimal" minOccurs="0"/>
+      <xs:element name="time" type="xs:dateTime" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="lat" type="xs:decimal" use="required"/>
+    <xs:attribute name="lon" type="xs:decimal" use="required"/>
+  </xs:complexType>
+
+  <!-- Element references -->
+  <xs:element name="wpt" type="wptType"/>
+  <xs:element name="trk" type="trkType"/>
+  <xs:element name="trkseg" type="trksegType"/>
+  <xs:element name="trkpt" type="trkptType"/>
+
+</xs:schema>
+

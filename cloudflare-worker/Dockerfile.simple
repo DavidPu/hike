@@ -1,0 +1,29 @@
+# Simple Dockerfile for Cloudflare Worker Deployment
+
+# Use Node.js 22 Alpine
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json ./
+RUN npm install
+
+# Copy worker code
+COPY worker.js .
+COPY wrangler.toml ./
+
+# Install wrangler globally
+RUN npm install -g wrangler@4.0.0
+
+# Create config directory
+RUN mkdir -p .wrangler
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# Default command
+CMD ["npm", "run", "deploy"]
+
+# Alternative: Just run wrangler deploy directly
+# ENTRYPOINT ["npx", "wrangler", "deploy"]
