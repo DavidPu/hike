@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hike App - Cloudflare Worker Integration Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2, h3 { margin-top: 0; }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: inline-block;
+      background: #2563eb;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .success { color: #16a34a; }
+    .error { color: #dc2626; }
+    .loading { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>🥾 Hike App - Cloudflare Worker Demo</h1>
+
+  <p>This page demonstrates how to integrate the Cloudflare Worker with the hike GPX viewer.</p>
+
+  <div class="card">
+    <h2>1. Natural Language Route Planning</h2>
+    <p>Ask jina.ai to find a route using natural language:</p>
+    <input type="text" id="routeQuery" placeholder="e.g., Find a hiking trail from San Francisco to Mt. Tamalpais">
+    <button id="planRouteBtn" class="btn">Plan Route</button>
+    <pre id="routeResult"></pre>
+  </div>
+
+  <div class="card">
+    <h2>2. Traditional Waypoint Planning</h2>
+    <p>Use specific waypoints for route planning:</p>
+    <label>Start Waypoint</label>
+    <input type="number" id="startLat" step="any" placeholder="Start Latitude" value="37.78">
+    <input type="number" id="startLon" step="any" placeholder="Start Longitude" value="-122.4">
+    <label>End Waypoint</label>
+    <input type="number" id="endLat" step="any" placeholder="End Latitude" value="37.78">
+    <input type="number" id="endLon" step="any" placeholder="End Longitude" value="-122.5">
+    <button id="planWaypointBtn" class="btn">Plan Route</button>
+    <pre id="waypointResult"></pre>
+  </div>
+
+  <div class="card">
+    <h2>3. GPX File Analysis</h2>
+    <p>Analyze a GPX file with AI:</p>
+    <select id="gpxFiles">
+      <option value="">Select a GPX file...</option>
+    </select>
+    <button id="analyzeBtn" class="btn">Analyze GPX</button>
+    <pre id="analysisResult"></pre>
+  </div>
+
+  <div class="card">
+    <h2>4. GPX File Management</h2>
+    <p>Upload and manage GPX files:</p>
+    <input type="file" id="gpxUpload" accept=".gpx,.xml">
+    <button id="uploadBtn" class="btn">Upload GPX</button>
+    <pre id="uploadResult"></pre>
+    <button id="listBtn" class="btn">List Files</button>
+    <pre id="listResult"></pre>
+  </div>
+
+  <script type="module">
+    // Replace this with your actual worker URL
+    const WORKER_URL = 'https://hike-worker.your-worker-name.workers.dev';
+
+    // Example: Set a real jina.ai API key
+    const JINA_API_KEY = 'YOUR_JINA_API_KEY';
+
+    // Route Planning with AI
+    document.getElementById('planRouteBtn').addEventListener('click', async () => {
+      const query = document.getElementById('routeQuery').value;
+      const resultEl = document.getElementById('routeResult');
+
+      if (!query) {
+        resultEl.innerHTML = '<span class="error">Please enter a route query</span>';
+        return;
+      }
+
+      resultEl.innerHTML = '<span class="loading">Planning route...</span>';
+
+      try {
+        const response = await fetch(`${WORKER_URL}/api/route/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            apiKey: JINA_API_KEY,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to plan route');
+        }
+
+        resultEl.innerHTML = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultEl.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    });
+
+    // Traditional waypoint planning
+    document.getElementById('planWaypointBtn').addEventListener('click', async () => {
+      const startLat = parseFloat(document.getElementById('startLat').value);
+      const startLon = parseFloat(document.getElementById('startLon').value);
+      const endLat = parseFloat(document.getElementById('endLat').value);
+      const endLon = parseFloat(document.getElementById('endLon').value);
+
+      const resultEl = document.getElementById('waypointResult');
+
+      if (isNaN(startLat) || isNaN(startLon) || isNaN(endLat) || isNaN(endLon)) {
+        resultEl.innerHTML = '<span class="error">Please enter valid coordinates</span>';
+        return;
+      }
+
+      resultEl.innerHTML = '<span class="loading">Planning route...</span>';
+
+      try {
+        const response = await fetch(`${WORKER_URL}/api/route/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            waypoints: [
+              { lat: startLat, lon: startLon },
+              { lat: endLat, lon: endLon }
+            ],
+            mode: 'hiking',
+            apiKey: JINA_API_KEY,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to plan route');
+        }
+
+        resultEl.innerHTML = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultEl.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    });
+
+    // List GPX files
+    document.getElementById('listBtn').addEventListener('click', async () => {
+      const resultEl = document.getElementById('listResult');
+
+      resultEl.innerHTML = '<span class="loading">Loading files...</span>';
+
+      try {
+        const response = await fetch(`${WORKER_URL}/api/gpx`, {
+          method: 'GET',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to list files');
+        }
+
+        resultEl.innerHTML = JSON.stringify(data, null, 2);
+
+        // Update dropdown
+        const select = document.getElementById('gpxFiles');
+        select.innerHTML = '<option value="">Select a GPX file...</option>';
+        data.files.forEach(file => {
+          const option = document.createElement('option');
+          option.value = file.key;
+          option.textContent = file.key;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        resultEl.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    });
+
+    // Upload GPX file
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('gpxUpload');
+      const resultEl = document.getElementById('uploadResult');
+
+      if (fileInput.files.length === 0) {
+        resultEl.innerHTML = '<span class="error">Please select a GPX file</span>';
+        return;
+      }
+
+      resultEl.innerHTML = '<span class="loading">Uploading...</span>';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const response = await fetch(`${WORKER_URL}/api/gpx/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload');
+        }
+
+        resultEl.innerHTML = JSON.stringify(data, null, 2);
+
+        // Refresh file list
+        document.getElementById('listBtn').click();
+      } catch (error) {
+        resultEl.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    });
+
+    // Analyze GPX file
+    document.getElementById('analyzeBtn').addEventListener('click', async () => {
+      const key = document.getElementById('gpxFiles').value;
+      const resultEl = document.getElementById('analysisResult');
+
+      if (!key) {
+        resultEl.innerHTML = '<span class="error">Please select a GPX file first</span>';
+        return;
+      }
+
+      resultEl.innerHTML = '<span class="loading">Analyzing...</span>';
+
+      try {
+        const response = await fetch(`${WORKER_URL}/api/analyze/gpx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gpxKey: key,
+            apiKey: JINA_API_KEY,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to analyze');
+        }
+
+        resultEl.innerHTML = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultEl.innerHTML = `<span class="error">${error.message}</span>`;
+      }
+    });
+  </script>
+</body>
+</html>

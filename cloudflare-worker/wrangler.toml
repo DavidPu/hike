@@ -1,0 +1,20 @@
+name = "hike-worker"
+main = "worker.js"
+compatibility_date = "2026-11-10"
+
+# Cloudflare account from cloudflare.md
+account_id = "1a5ee5d294a81e17cb7a24b72e5a6d39"
+
+# R2 bucket for GPX storage
+[[r2_buckets]]
+binding = "GPX_BUCKET"
+bucket_name = "hike-gpx-files"
+
+# Environment variables for jina.ai API
+[vars]
+JINA_API_KEY = "YOUR_JINA_API_KEY_HERE"
+JINA_API_URL = "https://api.jina.ai/v1"
+
+# Secrets for production (set with: wrangler secret put JINA_API_KEY)
+# [secrets]
+# JINA_API_KEY = ""
