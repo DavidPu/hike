@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  worker:
+    build: .
+    container_name: hike-worker
+    image: hike-worker:latest
+
+    # Environment variables for deployment
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
+      - CLOUDFLARE_API_URL=${CLOUDFLARE_API_URL:-https://api.jina.ai/v1}
+      - JINA_API_KEY=${JINA_API_KEY}
+
+    # Uncomment for interactive debugging
+    # stdin_open: true
+    # tty: true
+
+    # Uncomment for volume mounting wrangler.toml
+    # volumes:
+    #   - ./wrangler.toml:/app/wrangler.toml
+
+    # Network configuration
+    networks:
+      - worker-net
+
+networks:
+  worker-net:
+    driver: bridge

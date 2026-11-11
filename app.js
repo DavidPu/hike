@@ -1,7 +1,38 @@
 /* ───────────────────── GPX Parser ───────────────────── */
+// ------------- Security Enhancements --------------
+// * Enforce a maximum GPX size of 5 MB to avoid DoS via
+//   extremely large uploads.
+// * Validate XML against a small XSD schema to ensure the
+//   file adheres to the GPX specification.
+// * Escape all text content before rendering to the DOM.
+//
+// The XSD file is shipped alongside the application as
+// `gpx.xsd` in the root directory.
+const MAX_GPX_BYTES = 5 * 1024 * 1024; // 5 MB
+// Lazy require – will be loaded only when needed.
+let libxmljs, fs;
 
 class GPXParser {
   static parse(xmlString) {
+    // Validate file size
+    if (new Blob([xmlString]).size > MAX_GPX_BYTES) {
+      throw new Error('GPX file exceeds the 5 MB size limit.');
+    }
+
+    // Lazy load the XML validation libraries only when needed
+    if (!libxmljs) {
+      libxmljs = require('libxmljs');
+      fs = require('fs');
+    }
+    // Validate against the GPX XSD schema
+    const schemaContent = fs.readFileSync('gpx.xsd', 'utf8');
+    const schemaDoc = libxmljs.parseXml(schemaContent);
+    const xmlDoc = libxmljs.parseXml(xmlString);
+    if (!xmlDoc.validate(schemaDoc)) {
+      const errors = xmlDoc.validationErrors.map(e => e.message).join('; ');
+      throw new Error(`GPX validation failed: ${errors}`);
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, 'application/xml');
 
